@@ -46,3 +46,6 @@ Network Trash Folder
 Temporary Items
 .apdisk
 private/token.txt
+database.pyc
+response_methods.pyc
+tmp/tmp.py
