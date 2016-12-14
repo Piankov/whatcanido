@@ -10,11 +10,12 @@ from response_methods import start, get_task, button
 
 def get_token():
     with open('private/token.txt') as token_file:
-        result = token_file.read()
+        result = token_file.read().rstrip()
         print result
     return result
 
 TOKEN = get_token()
+
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',level=logging.INFO)
 
 
