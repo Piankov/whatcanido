@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from database import save_task, get_task, update_task, get_time, get_location
+from database import save_task, show_tasks, get_task, update_task, get_time, get_location
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import ast
 
@@ -7,6 +7,15 @@ import ast
 def start(bot, update):
     bot.sendMessage(chat_id=update.message.chat_id, text="Привет, любой текст который ты пришлёшь я сохраню как задачу!")
     
+
+
+def show(bot, update):
+    tasks = show_tasks(update.message.from_user)
+    query = update.callback_query
+
+    bot.sendMessage(chat_id=update.message.chat_id, text="Задачи:  %s" % tasks)
+    
+
 
 def get_task(bot, update):
     id = save_task(update.message.from_user, update.message.text)
