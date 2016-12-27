@@ -15,13 +15,30 @@ db = MySQLdb.connect (
     user='root',
     passwd='root123',
     db='whatcanido',
+    charset="utf8",
+    use_unicode=True,
     cursorclass = MySQLdb.cursors.DictCursor,
 )
 cur = db.cursor()
 
 
 def get_user_id(username):
-    return 5
+    print username
+    query = "SELECT * FROM Users WHERE Login = '%s_%d'" % (username['username'], username['id'])
+    print query
+    cur.execute(query)
+    user_id_list = parse_responce(cur)
+    print 'user_id_list =', user_id_list
+    if user_id_list:
+        return user_id_list[0]['ID']
+    
+    query = 'INSERT INTO \
+Users (Login) \
+VALUES ("%s_%d")' % (username['username'], username['id'])
+    print query
+    cur.execute(query)
+    db.commit()
+    return int(get_last_id())
 
 def parse_responce(cur):
     rowDump = []
@@ -59,8 +76,9 @@ def show_tasks(user):
 WHERE UserID = %d' % user_id
     cur.execute(query)
     tasks = parse_responce(cur)
-    
-    return str(tasks)
+    tasks = [str(d) for d in tasks]
+    tasks = '\n'.join(tasks)
+    return tasks
 
     
     
