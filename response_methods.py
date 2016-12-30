@@ -13,6 +13,11 @@ def show(bot, update):
     tasks = show_tasks(update.message.from_user)
     query = update.callback_query
 
+    print 'tasks:', tasks
+    print type(tasks)
+    tasks = tasks.encode('utf8')
+    print 'tasks:', tasks
+    print type(tasks)
     bot.sendMessage(chat_id=update.message.chat_id, text="Задачи:  %s" % tasks)
     
 
@@ -34,13 +39,12 @@ def get_task(bot, update):
 def button(bot, update):
     query = update.callback_query
     
-    
     reply = ast.literal_eval(query.data)
     if 'time' in reply:
-        bot.editMessageText(text="Ок, %s" % get_time(reply['time']),
+        bot.editMessageText(text="Ок, %s" % get_time(reply['time']).encode('utf8'),
                         chat_id=query.message.chat_id,
                         message_id=query.message.message_id)
-        update_task(query.message.from_user, reply['id'], time=reply['time'])
+        update_task(query.from_user, reply['id'], time=reply['time'])
                         
         def create_location_button(num):
             return InlineKeyboardButton(get_location(num), callback_data="{'id':%s, 'location':%s}" % (reply['id'], num))
@@ -51,9 +55,9 @@ def button(bot, update):
         bot.sendMessage(chat_id=query.message.chat_id, text="Это где?", reply_markup=reply_markup)
         
     if 'location' in reply:
-        bot.editMessageText(text="Ок, %s" % get_location(reply['location']),
+        bot.editMessageText(text="Ок, %s" % get_location(reply['location']).encode('utf8'),
                         chat_id=query.message.chat_id,
                         message_id=query.message.message_id)
-        update_task(query.message.from_user, reply['id'], location=reply['location'])
+        update_task(query.from_user, reply['id'], location=reply['location'])
     
     
