@@ -55,12 +55,13 @@ def button(bot, update):
     query = update.callback_query
     
     reply = ast.literal_eval(query.data)
+    print 'BUTTON:', reply
     if reply.get('action') == 'update':
+        update_task(query.from_user, reply)
         if 'time' in reply:
             bot.editMessageText(text="Ок, %s" % get_time(reply['time']).encode('utf8'),
                             chat_id=query.message.chat_id,
                             message_id=query.message.message_id)
-            update_task(query.from_user, reply['id'], time=reply['time'])
                             
             def create_location_button(num):
                 return InlineKeyboardButton(get_location(num), callback_data="{'action':'update', 'id':%s, 'location':%s}" % (reply['id'], num))
@@ -74,11 +75,19 @@ def button(bot, update):
             bot.editMessageText(text="Ок, %s" % get_location(reply['location']).encode('utf8'),
                             chat_id=query.message.chat_id,
                             message_id=query.message.message_id)
-            update_task(query.from_user, reply['id'], location=reply['location'])
     
     if reply.get('action') == 'show':
         
-        task = get_task_from_db(query.from_user, reply.get('time', 0), reply.get('location', 0))
-        bot.sendMessage(chat_id=query.message.chat_id, text=task)
+        number_of_tasks, task_id, task = get_task_from_db(query.from_user, reply.get('time', 0), reply.get('location', 0), reply.get('number', 0))
+        reply['number'] = reply.get('number', 0) + 1
+        if reply['number'] >= number_of_tasks:
+            reply['number'] = 0
+            button_name = 'Давай сначала!'
+        else:
+            button_name = 'Следущую!'
+        keyboard=[[InlineKeyboardButton('Делаю!', callback_data="{'action':'update', 'id':%s, 'status':1}" %  task_id),
+        InlineKeyboardButton(button_name, callback_data=str(reply))]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        bot.sendMessage(chat_id=query.message.chat_id, text=task, reply_markup=reply_markup)
 
 

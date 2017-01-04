@@ -91,16 +91,18 @@ WHERE UserID = %d' % user_id
 
     
     
-def update_task(user, id, location = 0, time = 0):
+def update_task(user, reply_dict):
+    # if I'm going to update several columns at once I have to think about concatinations
     user_id = get_user_id(user)
+    
     update_str = ''
-    if time:
-        update_str = 'Time = %d' % time
-        print "Change time for user %s, task %d, to %s" % (user['username'], id, get_time(time))
-    if location:
-        update_str = 'Location = %d' % location
-        print "Change location for user %s, task %d, to %s" % (user['username'], id, get_location(location))
-    query = "UPDATE Tasks SET %s WHERE ID = %d AND UserID = %d" % (update_str, id, user_id); 
+    print reply_dict
+    print type(reply_dict)
+    for k in reply_dict:
+         if k == 'id' or k == 'action':
+             continue
+         update_str += '%s = %d' % (k[0].upper()+k[1:], reply_dict[k])
+    query = "UPDATE Tasks SET %s WHERE ID = %d AND UserID = %d" % (update_str, reply_dict['id'], user_id); 
     print "DATABASE!", query
     cur.execute(query)
     db.commit() 
@@ -116,13 +118,13 @@ def get_task_from_db(user, time, location, number=0):
     else:
         location_str = ''
     query = 'SELECT * FROM Tasks \
-WHERE UserID = %d %s %s limit 1;' % (user_id, time_str, location_str)
+WHERE UserID = %d %s %s' % (user_id, time_str, location_str)
     print "DATABASE!", query
     cur.execute(query)
     try:
-        return parse_responce(cur)[number]['Description']
+        return len(parse_responce(cur)), parse_responce(cur)[number]['ID'], parse_responce(cur)[number]['Description']
     except IndexError:
-        return 'Таких нету!'
+        return 0, 0, 'Таких нету!'
         
     
 def get_time(n):
