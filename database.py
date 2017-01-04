@@ -105,10 +105,25 @@ def update_task(user, id, location = 0, time = 0):
     cur.execute(query)
     db.commit() 
  
-def get_task(username, type, time):
-    return "Go fuck yourself"
-    
-
+def get_task_from_db(user, time, location, number=0):
+    user_id = get_user_id(user)
+    if time:
+        time_str = 'AND Time = %d' % time
+    else:
+        time_str = ''
+    if location:
+        location_str = 'AND Location = %d' % location
+    else:
+        location_str = ''
+    query = 'SELECT * FROM Tasks \
+WHERE UserID = %d %s %s limit 1;' % (user_id, time_str, location_str)
+    print "DATABASE!", query
+    cur.execute(query)
+    try:
+        return parse_responce(cur)[number]['Description']
+    except IndexError:
+        return 'Таких нету!'
+        
     
 def get_time(n):
     return time_list[n]

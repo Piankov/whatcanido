@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from database import save_task, show_tasks, get_task, update_task, get_time, get_location
+from database import save_task, show_tasks, get_task_from_db, update_task, get_time, get_location
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import ast
 
@@ -10,25 +10,40 @@ def start(bot, update):
 
 
 def show(bot, update):
-    tasks = show_tasks(update.message.from_user)
     query = update.callback_query
 
-    print 'tasks:', tasks
-    print type(tasks)
-    tasks = tasks.encode('utf8')
-    print 'tasks:', tasks
-    print type(tasks)
-    bot.sendMessage(chat_id=update.message.chat_id, text="Задачи:  %s" % tasks)
+    def create_show_button(t, l):
+        if not t:
+            label = "%s" % get_location(l)
+        else:
+            label = get_time(t)
+        return InlineKeyboardButton(label, callback_data="{'action':'show', 'time':%d, 'location': %d}" % (t, l))
+    # keyboard = [[create_time_button(i) for i in range(1, 4)]]
+    keyboard = []
+    for j in range(1, 5):
+        time_str = [create_show_button(i, j) for i in range(0, 4)]
+        keyboard.append(time_str)
+
+          
+    reply_markup = InlineKeyboardMarkup(keyboard)
+                
+    bot.sendMessage(chat_id=update.message.chat_id, text="Какие задачи показать??", reply_markup=reply_markup)
+
+    # tasks = show_tasks(update.message.from_user)
+    # print 'tasks:', tasks
+    # print type(tasks)
+    # tasks = tasks.encode('utf8')
+    # print 'tasks:', tasks
+    # print type(tasks)
+    # bot.sendMessage(chat_id=update.message.chat_id, text="Задачи:  %s" % tasks)
     
 
 
 def get_task(bot, update):
     id = save_task(update.message.from_user, update.message.text)
     def create_time_button(num):
-        return InlineKeyboardButton(get_time(num), callback_data="{'id':%s, 'time':%s}" % (id, num))
+        return InlineKeyboardButton(get_time(num), callback_data="{'action':'update', 'id':%s, 'time':%s}" % (id, num))
     keyboard = [[create_time_button(i) for i in range(1, 4)]]
-
-                #[InlineKeyboardButton("Дом", callback_data='3')]]
                 
     reply_markup = InlineKeyboardMarkup(keyboard)
                 
@@ -40,24 +55,30 @@ def button(bot, update):
     query = update.callback_query
     
     reply = ast.literal_eval(query.data)
-    if 'time' in reply:
-        bot.editMessageText(text="Ок, %s" % get_time(reply['time']).encode('utf8'),
-                        chat_id=query.message.chat_id,
-                        message_id=query.message.message_id)
-        update_task(query.from_user, reply['id'], time=reply['time'])
-                        
-        def create_location_button(num):
-            return InlineKeyboardButton(get_location(num), callback_data="{'id':%s, 'location':%s}" % (reply['id'], num))
+    if reply.get('action') == 'update':
+        if 'time' in reply:
+            bot.editMessageText(text="Ок, %s" % get_time(reply['time']).encode('utf8'),
+                            chat_id=query.message.chat_id,
+                            message_id=query.message.message_id)
+            update_task(query.from_user, reply['id'], time=reply['time'])
+                            
+            def create_location_button(num):
+                return InlineKeyboardButton(get_location(num), callback_data="{'action':'update', 'id':%s, 'location':%s}" % (reply['id'], num))
+                
+            keyboard = [[create_location_button(i) for i in range(1, 5)]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+                
+            bot.sendMessage(chat_id=query.message.chat_id, text="Это где?", reply_markup=reply_markup)
             
-        keyboard = [[create_location_button(i) for i in range(1, 5)]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-            
-        bot.sendMessage(chat_id=query.message.chat_id, text="Это где?", reply_markup=reply_markup)
+        if 'location' in reply:
+            bot.editMessageText(text="Ок, %s" % get_location(reply['location']).encode('utf8'),
+                            chat_id=query.message.chat_id,
+                            message_id=query.message.message_id)
+            update_task(query.from_user, reply['id'], location=reply['location'])
+    
+    if reply.get('action') == 'show':
         
-    if 'location' in reply:
-        bot.editMessageText(text="Ок, %s" % get_location(reply['location']).encode('utf8'),
-                        chat_id=query.message.chat_id,
-                        message_id=query.message.message_id)
-        update_task(query.from_user, reply['id'], location=reply['location'])
-    
-    
+        task = get_task_from_db(query.from_user, reply.get('time', 0), reply.get('location', 0))
+        bot.sendMessage(chat_id=query.message.chat_id, text=task)
+
+
