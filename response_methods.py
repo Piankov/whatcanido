@@ -89,5 +89,4 @@ def button(bot, update):
         InlineKeyboardButton(button_name, callback_data=str(reply))]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         bot.sendMessage(chat_id=query.message.chat_id, text=task, reply_markup=reply_markup)
-
-
+    
