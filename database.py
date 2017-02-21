@@ -2,6 +2,10 @@
 import sys
 import MySQLdb
 import MySQLdb.cursors
+import logging
+
+
+logging.basicConfig(format = u'[%(asctime)s] %(message)s', level = logging.INFO, filename = u'logs/database.log')
 
 
 print "Encoding is", sys.stdin.encoding
@@ -22,23 +26,10 @@ db = MySQLdb.connect (
 cur = db.cursor()
 
 
-def get_user_id(username):
-    print username
-    query = "SELECT * FROM Users WHERE Login = '%s_%d'" % (username['username'], username['id'])
-    print query
+def execute_query(query):
+    logging.info( u'QUERY: %s' % query)
     cur.execute(query)
-    user_id_list = parse_responce(cur)
-    print 'user_id_list =', user_id_list
-    if user_id_list:
-        return user_id_list[0]['ID']
-    
-    query = 'INSERT INTO \
-Users (Login) \
-VALUES ("%s_%d")' % (username['username'], username['id'])
-    print query
-    cur.execute(query)
-    db.commit()
-    return int(get_last_id())
+
 
 def parse_responce(cur):
     rowDump = []
@@ -47,36 +38,45 @@ def parse_responce(cur):
     return rowDump
 
 
+def get_user_id(username):
+    execute_query("SELECT * FROM Users WHERE Login = '%s_%d'" % (username['username'], username['id']))
+    user_id_list = parse_responce(cur)
+    if user_id_list:
+        logging.info( u'Get user id %d for user %s' % (user_id_list[0]['ID'], username))
+        return user_id_list[0]['ID']
+    
+    execute_query('INSERT INTO \
+Users (Login) \
+VALUES ("%s_%d")' % (username['username'], username['id']))
+    db.commit()
+    new_id = int(get_last_id())
+    logging.info( u'Add user with id %d for username %s' % (new_id, username))
+    return new_id
+
+
 def get_last_id():
-    query = 'SELECT LAST_INSERT_ID() as ID'
-    cur.execute(query)
+    execute_query('SELECT LAST_INSERT_ID() as ID')
     id = parse_responce(cur)[0]['ID']
     return id
 
 
 def save_task(user, task_text):
     user_id = get_user_id(user)
-    query = 'INSERT INTO \
+    execute_query('INSERT INTO \
 Tasks (Description, UserID) \
-VALUES ("%s", %d)' % (task_text, user_id)
-    print query
-
-    cur.execute(query)
+VALUES ("%s", %d)' % (task_text, user_id))
     db.commit()
-    
     id = get_last_id() 
 
-    print "Save for %s task(%d): %s" % (user['username'], id, task_text)
+    logging.info( u'Save task %d for user %s: %s' % (id, user['username'], task_text))
     return id
 
 
 def show_tasks(user):
     user_id = get_user_id(user)
-    query = 'SELECT * FROM Tasks \
-WHERE UserID = %d' % user_id
-    cur.execute(query)
+    execute_query('SELECT * FROM Tasks \
+WHERE UserID = %d' % user_id)
     tasks = parse_responce(cur)
-    # tasks = [str(d) for d in tasks]
     str_tasks = []
     for d in tasks:
         print d
@@ -96,15 +96,11 @@ def update_task(user, reply_dict):
     user_id = get_user_id(user)
     
     update_str = ''
-    print reply_dict
-    print type(reply_dict)
     for k in reply_dict:
          if k == 'id' or k == 'action':
              continue
          update_str += '%s = %d' % (k[0].upper()+k[1:], reply_dict[k])
-    query = "UPDATE Tasks SET %s WHERE ID = %d AND UserID = %d" % (update_str, reply_dict['id'], user_id); 
-    print "DATABASE!", query
-    cur.execute(query)
+    execute_query("UPDATE Tasks SET %s WHERE ID = %d AND UserID = %d" % (update_str, reply_dict['id'], user_id))
     db.commit() 
  
 def get_task_from_db(user, time, location, number=0):
@@ -117,10 +113,8 @@ def get_task_from_db(user, time, location, number=0):
         location_str = 'AND Location = %d' % location
     else:
         location_str = ''
-    query = 'SELECT * FROM Tasks \
-WHERE UserID = %d %s %s' % (user_id, time_str, location_str)
-    print "DATABASE!", query
-    cur.execute(query)
+    execute_query('SELECT * FROM Tasks \
+WHERE UserID = %d %s %s' % (user_id, time_str, location_str))
     try:
         return len(parse_responce(cur)), parse_responce(cur)[number]['ID'], parse_responce(cur)[number]['Description']
     except IndexError:
