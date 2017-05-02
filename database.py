@@ -5,8 +5,23 @@ import MySQLdb.cursors
 import logging
 
 
-logging.basicConfig(format = u'[%(asctime)s] %(message)s', level = logging.INFO, filename = u'logs/database.log')
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 
+
+def setup_logger(name, log_file, level=logging.INFO):
+    """Function setup as many loggers as you want"""
+
+    handler = logging.FileHandler(log_file)        
+    handler.setFormatter(formatter)
+
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.addHandler(handler)
+
+    return logger
+
+
+db_logger = setup_logger('db_logger', u'logs/database.log')
 
 print "Encoding is", sys.stdin.encoding
 
@@ -27,7 +42,7 @@ cur = db.cursor()
 
 
 def execute_query(query):
-    logging.info( u'QUERY: %s' % query)
+    db_logger.info( u'QUERY: %s' % query)
     cur.execute(query)
 
 
@@ -42,7 +57,7 @@ def get_user_id(username):
     execute_query("SELECT * FROM Users WHERE Login = '%s_%d'" % (username['username'], username['id']))
     user_id_list = parse_responce(cur)
     if user_id_list:
-        logging.info( u'Get user id %d for user %s' % (user_id_list[0]['ID'], username))
+        db_logger.info( u'Get user id %d for user %s' % (user_id_list[0]['ID'], username))
         return user_id_list[0]['ID']
     
     execute_query('INSERT INTO \
@@ -50,7 +65,7 @@ Users (Login) \
 VALUES ("%s_%d")' % (username['username'], username['id']))
     db.commit()
     new_id = int(get_last_id())
-    logging.info( u'Add user with id %d for username %s' % (new_id, username))
+    db_logger.info( u'Add user with id %d for username %s' % (new_id, username))
     return new_id
 
 
@@ -68,9 +83,14 @@ VALUES ("%s", %d)' % (task_text, user_id))
     db.commit()
     id = get_last_id() 
 
-    logging.info( u'Save task %d for user %s: %s' % (id, user['username'], task_text))
+    db_logger.info( u'Save task %d for user %s: %s' % (id, user['username'], task_text))
     return id
 
+
+def delete_task(task_id):
+    execute_query('DELETE FROM Tasks \
+WHERE ID = %s' % (task_id))
+    db.commit()
 
 def show_tasks(user):
     user_id = get_user_id(user)
@@ -102,6 +122,7 @@ def update_task(user, reply_dict):
          update_str += '%s = %d' % (k[0].upper()+k[1:], reply_dict[k])
     execute_query("UPDATE Tasks SET %s WHERE ID = %d AND UserID = %d" % (update_str, reply_dict['id'], user_id))
     db.commit() 
+
  
 def get_task_from_db(user, time, location, number=0):
     user_id = get_user_id(user)
@@ -119,6 +140,24 @@ WHERE UserID = %d %s %s' % (user_id, time_str, location_str))
         return len(parse_responce(cur)), parse_responce(cur)[number]['ID'], parse_responce(cur)[number]['Description']
     except IndexError:
         return 0, 0, 'Таких нету!'
+
+
+def get_active_tasks(user):
+    user_id = get_user_id(user)
+    execute_query('SELECT * FROM Tasks \
+WHERE UserID = %d and status = 1' % (user_id))
+    try:
+        active_list = []
+        active_number = len(parse_responce(cur))
+        for i in parse_responce(cur):
+            active_list.append((i['ID'], i['Description']))
+        print active_list
+        return active_list
+    except IndexError:
+        return []
+
+ 
+        
         
     
 def get_time(n):
